@@ -16,5 +16,31 @@ services:
       timeout: 5s
       retries: 10
 
+  backend:
+    build:
+      context: ./backend
+      target: runtime
+    restart: unless-stopped
+    environment:
+      ConnectionStrings__Default: "Host=db;Port=5432;Database=school_admission;Username=admission;Password=admission"
+      HOLD_DURATION_SECONDS: ${HOLD_DURATION_SECONDS:-600}
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # Runs the backend test suite against the same Postgres server (each test class uses its own database).
+  backend-tests:
+    profiles: ["test"]
+    build:
+      context: ./backend
+      target: test
+    environment:
+      TEST_DB_CONNECTION: "Host=db;Port=5432;Database=postgres;Username=admission;Password=admission"
+    depends_on:
+      db:
+        condition: service_healthy
+
 volumes:
   pgdata:
