@@ -39,12 +39,16 @@ the `pgdata` volume, so it survives `docker compose down` / `up` and container r
 | `EXPIRY_SWEEP_INTERVAL_SECONDS` | backend | `5` | How often the background job marks overdue holds as `EXPIRED` |
 | `API_BASE_URL` | frontend (runtime) | `http://localhost:8080` | Backend URL the browser calls. Served as `/config.js`, so no rebuild is needed |
 | `VITE_API_BASE_URL` | frontend (`npm run dev` / build) | `http://localhost:8080` | Same as above for local development |
+| `POSTGRES_PORT` | compose (host side) | `5432` | Host port for PostgreSQL. Change it if a local PostgreSQL already uses 5432 |
 
-Compose passes `HOLD_DURATION_SECONDS` and `API_BASE_URL` through from your shell, e.g.
+Compose passes `HOLD_DURATION_SECONDS`, `API_BASE_URL` and `POSTGRES_PORT` through from your shell, e.g.
 
 ```bash
 HOLD_DURATION_SECONDS=60 docker compose up --build
+POSTGRES_PORT=5433 docker compose up --build    # if port 5432 is already taken
 ```
+
+On Windows PowerShell: `$env:POSTGRES_PORT=5433; docker compose up --build`.
 
 ## Using the app
 
