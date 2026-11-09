@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Http.Json;
 using Microsoft.EntityFrameworkCore;
+using SchoolAdmission.Api.Background;
 using SchoolAdmission.Api.Common;
 using SchoolAdmission.Api.Data;
 using SchoolAdmission.Api.Features.Classes;
@@ -14,6 +15,7 @@ builder.Services.AddDbContext<AdmissionDbContext>(options => options.UseNpgsql(c
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton(AdmissionOptions.FromConfiguration(builder.Configuration));
 builder.Services.AddScoped<HoldService>();
+builder.Services.AddHostedService<ExpiredHoldSweeper>();
 
 builder.Services.Configure<RouteHandlerOptions>(options => options.ThrowOnBadRequest = true);
 builder.Services.Configure<JsonOptions>(options => options.SerializerOptions.DefaultIgnoreCondition =
