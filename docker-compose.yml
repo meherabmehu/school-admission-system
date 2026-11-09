@@ -31,6 +31,19 @@ services:
         condition: service_healthy
 
   # Runs the backend test suite against the same Postgres server (each test class uses its own database).
+  frontend:
+    build:
+      context: ./frontend
+      target: runtime
+    restart: unless-stopped
+    environment:
+      # Address the browser uses to reach the backend.
+      API_BASE_URL: ${API_BASE_URL:-http://localhost:8080}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
   backend-tests:
     profiles: ["test"]
     build:
@@ -41,6 +54,12 @@ services:
     depends_on:
       db:
         condition: service_healthy
+
+  frontend-tests:
+    profiles: ["test"]
+    build:
+      context: ./frontend
+      target: test
 
 volumes:
   pgdata:
