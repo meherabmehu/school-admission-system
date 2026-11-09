@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using SchoolAdmission.Api.Common;
 using SchoolAdmission.Api.Data;
 using SchoolAdmission.Api.Features.Classes;
+using SchoolAdmission.Api.Features.Holds;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -11,6 +12,8 @@ var connectionString = builder.Configuration.GetConnectionString("Default")
 
 builder.Services.AddDbContext<AdmissionDbContext>(options => options.UseNpgsql(connectionString));
 builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddSingleton(AdmissionOptions.FromConfiguration(builder.Configuration));
+builder.Services.AddScoped<HoldService>();
 
 builder.Services.Configure<RouteHandlerOptions>(options => options.ThrowOnBadRequest = true);
 builder.Services.Configure<JsonOptions>(options => options.SerializerOptions.DefaultIgnoreCondition =
@@ -28,6 +31,7 @@ app.UseCors();
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 app.MapClassEndpoints();
+app.MapHoldEndpoints();
 
 app.Run();
 
