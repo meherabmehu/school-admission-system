@@ -42,3 +42,17 @@ Decisions taken where the assignment left room for interpretation.
   web server) on port 3000.
 - English and Bangla UI text are provided because the users are parents in Bangladesh, many of whom
   are not technical.
+
+## Several backend processes (bonus)
+- Seat rules are enforced inside PostgreSQL, not in backend memory, so any number of backend
+  processes can share one database:
+  - Creating a hold locks the class row (`SELECT ... FOR UPDATE`) inside a transaction, so requests
+    from different processes queue on the same lock before counting `HELD` + `CONFIRMED` seats.
+  - A partial unique index on `(class_id, student_id) WHERE status IN ('HELD','CONFIRMED')` blocks a
+    second active application even if two processes insert at the same moment.
+  - Confirm and cancel lock the hold row, so the same hold is never counted twice.
+  - The expiry sweeper only updates rows that are already past `expires_at`, so running it in every
+    process is harmless.
+  - Startup migrations take a PostgreSQL advisory lock, so two processes can start together.
+- `ConcurrencyTests.Two_backend_instances_sharing_one_database_do_not_overbook` checks this with
+  two separate app instances against one database.
