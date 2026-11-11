@@ -124,7 +124,7 @@ Backend tests create a throw-away database per test class (override the server w
 - 100 parallel hold requests for 10 seats → exactly 10 succeed, never more than capacity
 - the same student applying many times in parallel → one hold
 - parallel confirms of one hold → counted once
-- **two backend instances on one database** competing for the same seats (bonus)
+- **two separate backend processes on different ports** sharing one database and competing for seats
 - expiry (including the background sweeper), seat release after expiry, confirm after expiry,
   ownership checks, cancel rules, `/me/holds`, input validation and JSON error bodies
 

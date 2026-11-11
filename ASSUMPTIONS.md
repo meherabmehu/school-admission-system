@@ -54,5 +54,6 @@ Decisions taken where the assignment left room for interpretation.
   - The expiry sweeper only updates rows that are already past `expires_at`, so running it in every
     process is harmless.
   - Startup migrations take a PostgreSQL advisory lock, so two processes can start together.
-- `ConcurrencyTests.Two_backend_instances_sharing_one_database_do_not_overbook` checks this with
-  two separate app instances against one database.
+- `ConcurrencyTests.Two_backend_processes_on_separate_ports_sharing_one_database_do_not_overbook`
+  starts two separate backend OS processes on different ports against one database and verifies
+  that parallel hold requests never exceed the seat count.

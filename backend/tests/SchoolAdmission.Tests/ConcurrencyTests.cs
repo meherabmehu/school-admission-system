@@ -1,4 +1,6 @@
 using System.Net;
+using System.Diagnostics;
+using System.Net.Sockets;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using SchoolAdmission.Api.Data;
@@ -82,5 +84,141 @@ public class ConcurrencyTests : IAsyncLifetime
 
         Assert.Equal(15, responses.Count(r => r.StatusCode == HttpStatusCode.Created));
         Assert.Equal(15, (await second.GetClassAsync(schoolClass.Id)).HeldSeats);
+    }
+
+    [Fact]
+    public async Task Two_backend_processes_on_separate_ports_sharing_one_database_do_not_overbook()
+    {
+        await using var first = await BackendProcess.StartAsync(_factory.ConnectionString);
+        await using var second = await BackendProcess.StartAsync(_factory.ConnectionString);
+        Assert.NotEqual(first.ProcessId, second.ProcessId);
+
+        using var firstClient = first.CreateClient();
+        using var secondClient = second.CreateClient();
+        var schoolClass = await firstClient.CreateClassAsync(totalSeats: 15);
+
+        var responses = await Task.WhenAll(Enumerable.Range(0, 80)
+            .Select(i => (i % 2 == 0 ? firstClient : secondClient)
+                .HoldAsync(schoolClass.Id, ApiClient.NewStudentId())));
+
+        Assert.Equal(15, responses.Count(r => r.StatusCode == HttpStatusCode.Created));
+        var rejected = responses.Where(r => r.StatusCode == HttpStatusCode.Conflict).ToArray();
+        Assert.Equal(65, rejected.Length);
+        foreach (var response in rejected)
+            Assert.Equal("NO_SEATS_AVAILABLE", await response.ErrorCodeAsync());
+
+        var finalState = await secondClient.GetClassAsync(schoolClass.Id);
+        Assert.Equal(15, finalState.HeldSeats);
+        Assert.Equal(0, finalState.AvailableSeats);
+    }
+
+    private sealed class BackendProcess : IAsyncDisposable
+    {
+        private readonly Process _process;
+        private readonly Task<string> _standardError;
+
+        private BackendProcess(Process process, Task<string> standardError, Uri address)
+        {
+            _process = process;
+            _standardError = standardError;
+            Address = address;
+        }
+
+        public int ProcessId => _process.Id;
+        private Uri Address { get; }
+
+        public HttpClient CreateClient() => new() { BaseAddress = Address, Timeout = TimeSpan.FromSeconds(10) };
+
+        public static async Task<BackendProcess> StartAsync(string connectionString)
+        {
+            var port = GetAvailablePort();
+            var address = new Uri($"http://127.0.0.1:{port}");
+            var apiAssembly = typeof(Program).Assembly.Location;
+            var testAssembly = typeof(ConcurrencyTests).Assembly.Location;
+            var runtimeConfig = Path.ChangeExtension(testAssembly, ".runtimeconfig.json");
+            var depsFile = Path.ChangeExtension(testAssembly, ".deps.json");
+
+            var startInfo = new ProcessStartInfo("dotnet")
+            {
+                WorkingDirectory = Path.GetDirectoryName(apiAssembly)!,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+            startInfo.ArgumentList.Add("exec");
+            startInfo.ArgumentList.Add("--runtimeconfig");
+            startInfo.ArgumentList.Add(runtimeConfig);
+            startInfo.ArgumentList.Add("--depsfile");
+            startInfo.ArgumentList.Add(depsFile);
+            startInfo.ArgumentList.Add(apiAssembly);
+            startInfo.Environment["ConnectionStrings__Default"] = connectionString;
+            startInfo.Environment["HOLD_DURATION_SECONDS"] = "600";
+            startInfo.Environment["EXPIRY_SWEEP_INTERVAL_SECONDS"] = "3600";
+            startInfo.Environment["ASPNETCORE_URLS"] = address.ToString();
+            startInfo.Environment["Urls"] = address.ToString();
+
+            var process = Process.Start(startInfo)
+                ?? throw new InvalidOperationException("Could not start the backend process.");
+            var standardError = process.StandardError.ReadToEndAsync();
+            _ = process.StandardOutput.ReadToEndAsync();
+            var backend = new BackendProcess(process, standardError, address);
+
+            try
+            {
+                await backend.WaitUntilReadyAsync();
+                return backend;
+            }
+            catch
+            {
+                await backend.DisposeAsync();
+                throw;
+            }
+        }
+
+        private async Task WaitUntilReadyAsync()
+        {
+            using var client = CreateClient();
+            var deadline = DateTimeOffset.UtcNow.AddSeconds(45);
+            while (DateTimeOffset.UtcNow < deadline)
+            {
+                if (_process.HasExited)
+                    throw new InvalidOperationException(
+                        $"Backend process exited with code {_process.ExitCode}: {await _standardError}");
+
+                try
+                {
+                    using var response = await client.GetAsync("/health");
+                    if (response.IsSuccessStatusCode)
+                        return;
+                }
+                catch (HttpRequestException)
+                {
+                    // Kestrel is still starting; retry until the startup deadline.
+                }
+
+                await Task.Delay(100);
+            }
+
+            throw new TimeoutException($"Backend did not start in time: {await _standardError}");
+        }
+
+        public async ValueTask DisposeAsync()
+        {
+            if (!_process.HasExited)
+            {
+                _process.Kill(entireProcessTree: true);
+                await _process.WaitForExitAsync();
+            }
+
+            _process.Dispose();
+        }
+
+        private static int GetAvailablePort()
+        {
+            using var listener = new TcpListener(System.Net.IPAddress.Loopback, 0);
+            listener.Start();
+            return ((System.Net.IPEndPoint)listener.LocalEndpoint).Port;
+        }
     }
 }
