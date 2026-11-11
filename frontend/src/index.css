@@ -197,15 +197,25 @@ main { padding: 8px 0 56px; flex: 1; }
 
 /* How it works */
 .how {
-  background: linear-gradient(135deg, rgba(255,255,255,0.9), rgba(232,240,255,0.7));
-  border: 1px solid rgba(37,99,235,0.12); border-radius: var(--radius);
-  padding: 16px 20px; margin-bottom: 24px; box-shadow: var(--shadow-sm);
+  position: relative; overflow: hidden;
+  background: linear-gradient(120deg, #edf4ff 0%, #f8fbff 48%, #f0f9ff 100%);
+  border: 1px solid rgba(37,99,235,0.14); border-radius: var(--radius);
+  padding: 18px 20px 20px; margin-bottom: 28px; box-shadow: var(--shadow-sm);
 }
-.how-title { font-size: 1rem; margin-bottom: 10px; color: var(--primary-dark); font-weight: 700; }
-.how-steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
-.how-steps li { display: flex; gap: 12px; align-items: flex-start; font-size: 0.95rem; color: #334155; }
+.how::before {
+  content: ''; position: absolute; inset: 0 auto 0 0; width: 4px;
+  background: linear-gradient(180deg, #2563eb, #38bdf8);
+}
+.how-title { font-size: 0.92rem; margin: 0 0 12px; color: var(--primary-dark); font-weight: 750; letter-spacing: 0.01em; }
+.how-steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.how-steps li {
+  display: flex; gap: 11px; align-items: center; min-height: 60px; padding: 10px 12px;
+  border: 1px solid rgba(148,163,184,0.2); border-radius: 14px;
+  background: rgba(255,255,255,0.78); box-shadow: 0 2px 7px rgba(15,23,42,0.035);
+  font-size: 0.92rem; line-height: 1.45; color: #334155;
+}
 .how-number {
-  flex: none; width: 30px; height: 30px; border-radius: 10px;
+  flex: none; width: 32px; height: 32px; border-radius: 50%;
   background: linear-gradient(135deg, var(--primary), #3b82f6); color: #fff;
   font-weight: 700; display: grid; place-items: center; box-shadow: 0 6px 12px -6px var(--primary-glow);
 }
@@ -375,6 +385,8 @@ main { padding: 8px 0 56px; flex: 1; }
   .topbar-inner { padding-bottom: 60px; }
   .brand small { display: none; }
   .how-steps { grid-template-columns: 1fr; }
+  .how { padding: 16px 16px 16px 18px; }
+  .how-steps li { min-height: 52px; }
   .application-body, .admin-layout { grid-template-columns: 1fr; }
   .stat-grid { grid-template-columns: repeat(2, 1fr); }
   .tab-hint { display: none; }
