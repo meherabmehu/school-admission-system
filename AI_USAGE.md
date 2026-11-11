@@ -1,42 +1,41 @@
 # AI Usage
 
-## Tools used
-- **Devin (Cognition AI)** – an AI coding agent, used through a chat session with access to this
-  repository and a sandbox machine (shell, .NET SDK, Node, Docker, browser).
+## Tools and scope
 
-## Where AI was used
-- Reading the assignment PDF and turning it into a task list and a design (row lock +
-  partial unique index for seat safety, time-based expiry plus a background sweeper).
-- Writing most of the code: the .NET API, EF Core model and migration, the React UI, the Dockerfiles
-  and `docker-compose.yml`.
-- Writing the backend tests (xUnit against real PostgreSQL, including the 100-request concurrency
-  test and the two-instance test) and the frontend tests (Vitest + Testing Library).
-- Drafting `README.md`, `ASSUMPTIONS.md` and this file.
+AI coding assistants were used during implementation and follow-up development:
 
-The requirements, decisions on unclear points, review of the generated code, and the final
-manual check of the running app were done by me.
+- **Devin (Cognition AI):** assisted with the initial requirements breakdown, implementation, and project documentation.
+- **ChatGPT/Codex:** assisted with a later code review, the separate-process concurrency test, Render deployment configuration, and UI refinements.
 
-## Mistakes the AI made and how they were caught
-- **Untranslatable EF Core query.** The first version of the class listing filtered and sorted
-  *after* projecting to the response record. EF Core could not translate it and `GET /classes`
-  returned `500`. Caught by calling the API with `curl` during manual testing; fixed by filtering
-  and ordering on the entity before the projection.
-- **Backend unreachable in Docker.** `appsettings.json` set `Urls` to `http://localhost:8080`,
-  which overrode the container's `ASPNETCORE_URLS` and made Kestrel listen only inside the
-  container. The container looked healthy but `curl localhost:8080/health` failed. Caught by a
-  health check after `docker compose up`; fixed by binding to `http://+:8080`.
-- **Stale process during manual tests.** New hold endpoints returned `404` because an old API process
-  was still running. Caught by the unexpected status codes; fixed by restarting the API after build.
-- **Icons that did not render.** The first UI used emoji as icons; in a browser without an emoji
-  font they showed as empty boxes. Caught by looking at screenshots; replaced with inline SVG icons.
-- **Ambiguous test query.** A frontend test looked up the student ID input by label text, which also
-  matched the surrounding section's `aria-label`, so the test failed. Caught by the failing test
-  run; fixed by querying the textbox role.
+AI assistance was used to draft and review code and documentation. It did not replace engineering review or decide whether the assignment requirements were satisfied.
 
-## How the output was checked
-- Every backend change was run against a real PostgreSQL database; the full xUnit suite
-  (21 tests) passes, including the concurrency and multi-instance tests.
-- The frontend test suite (14 tests) passes, `tsc` and ESLint are clean.
-- The whole stack was started with `docker compose up --build` from an empty volume and used through
-  the browser: create class → apply → countdown → confirm / cancel / expire, and data was still there
-  after restarting the containers.
+## How AI assistance was used
+
+- Converted the assignment brief into implementation tasks and discussed options for enforcing seat limits under concurrent requests.
+- Drafted portions of the .NET API, EF Core persistence layer, PostgreSQL migration, React interface, Docker configuration, and automated tests.
+- Helped identify edge cases in hold expiry, duplicate applications, request validation, API errors, and parallel confirmations.
+- Assisted with documentation, including `README.md`, `ASSUMPTIONS.md`, and this disclosure.
+- Reviewed deployment requirements and prepared a Render Blueprint for the API, frontend, and managed PostgreSQL database.
+
+## Review and decision-making
+
+I treated AI-generated output as a draft. I checked proposed behavior against the assignment's API contract and seat-allocation rules, reviewed changes in the repository, and recorded interpretation choices in `ASSUMPTIONS.md`. I retained, revised, or rejected suggestions based on those checks. The application does not treat a successful AI response as proof that a requirement is met; builds, tests, and runtime checks provide that evidence.
+
+## Issues found during development
+
+- **An EF Core query could not be translated.** The initial class-list query projected before filtering and sorting, causing `GET /classes` to return a server error. The query was reordered to apply those operations to the entity before projection.
+- **The API initially bound to the wrong Docker address.** The configured URL prevented requests from reaching the API through the container's published port. Binding was corrected and checked through the health endpoint.
+- **A stale local API process obscured an endpoint change.** The unexpected response was traced to the old process and resolved by restarting the API.
+- **Emoji icons rendered inconsistently.** They were replaced with inline SVG icons after visual review.
+- **A frontend test selector matched more than one accessible label.** The test was changed to select the student ID textbox by role.
+
+These issues were corrected and rechecked; they were not accepted as final behavior.
+
+## Verification
+
+- Backend: **24 automated tests passed** against PostgreSQL through Docker Compose. Coverage includes capacity under parallel requests and two separate backend OS processes sharing one database.
+- Frontend: **14 Vitest tests passed**. The production build completed with TypeScript checking and Vite.
+- Backend solution: built with .NET 8 with **zero warnings and zero errors**.
+- Runtime smoke checks confirmed the API health endpoint responds and the classes endpoint returns valid JSON.
+
+The test suites can be rerun with the Docker commands documented in `README.md`.
