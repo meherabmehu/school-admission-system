@@ -8,8 +8,7 @@ using SchoolAdmission.Api.Features.Holds;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var connectionString = builder.Configuration.GetConnectionString("Default")
-    ?? throw new InvalidOperationException("Connection string 'Default' is not configured.");
+var connectionString = DatabaseConnectionString.Resolve(builder.Configuration);
 
 builder.Services.AddDbContext<AdmissionDbContext>(options => options.UseNpgsql(connectionString));
 builder.Services.AddSingleton(TimeProvider.System);

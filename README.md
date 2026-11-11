@@ -140,5 +140,19 @@ cd backend && dotnet run --project src/SchoolAdmission.Api     # http://localhos
 cd frontend && npm ci && npm run dev                           # http://localhost:5173
 ```
 
+## Deploy on Render
+
+The root [`render.yaml`](render.yaml) Blueprint defines the API, React frontend and PostgreSQL
+database in Singapore. To provision them, open the Render Dashboard, choose **New → Blueprint**,
+connect `meherabmehu/school-admission-system` on `main`, review the three resources, then choose
+**Deploy Blueprint**. The API and frontend receive their public URLs automatically; the API uses
+Render's managed PostgreSQL connection URL.
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https%3A%2F%2Fgithub.com%2Fmeherabmehu%2Fschool-admission-system)
+
+This Blueprint uses Render's free plans for a preview deployment. Free web services sleep after
+15 minutes without traffic, and a free PostgreSQL database expires 30 days after creation. Upgrade
+the database before that deadline if the stored admission data must remain available.
+
 See [ASSUMPTIONS.md](ASSUMPTIONS.md) for decisions on unclear points and
 [AI_USAGE.md](AI_USAGE.md) for how AI tools were used.
